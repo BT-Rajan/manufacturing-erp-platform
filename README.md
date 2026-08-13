@@ -7,6 +7,12 @@ inventory, procurement, sales, orders, production, scheduling), rebuilt
 on an explicit domain-driven architecture with no loss of existing
 functionality.
 
+## Stack
+
+TypeScript throughout — Node.js backend, React frontend. No Python
+anywhere in this repo. MySQL for persistence. Single monolithic service,
+not microservices (see `docs/ARCHITECTURE.md` rule 30).
+
 ## Non-negotiables
 
 - **No loss of function.** See [`docs/PARITY_CHECKLIST.md`](docs/PARITY_CHECKLIST.md).

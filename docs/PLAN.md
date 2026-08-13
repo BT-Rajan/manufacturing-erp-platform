@@ -46,10 +46,13 @@ and audits — before a single business domain is touched.
 
 ## Pass 1 — Master Data Domains (parity, not features)
 
-Customers, Suppliers, Supplier Materials, Raw Materials, Products,
+Users, Customers, Suppliers, Supplier Materials, Raw Materials, Products,
 Machines — the "simple CRUD" domains, migrated first because they
 validate the domain/application/infra pattern cheaply before it's
-applied to the harder domains.
+applied to the harder domains. Users is included here (not deferred)
+because Pass 0 only ships a bootstrap login table — full user
+management (roles, admin CRUD, department permission matrix) still
+needs its proper domain module.
 
 - One domain module per entity, each owning its own rules, DTOs, and
   use cases (`CreateCustomer`, `UpdateSupplier`, etc.) — not a shared

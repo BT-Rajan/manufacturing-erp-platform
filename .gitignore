@@ -1,15 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
-
 # Node
 node_modules/
 dist/
 .env
 .env.local
+package-lock.json.bak
+*.tsbuildinfo
+
+# Test artifacts
+coverage/
 
 # IDE / OS
 .vscode/

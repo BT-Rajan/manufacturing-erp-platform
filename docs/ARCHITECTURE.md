@@ -12,26 +12,37 @@ Clean. Explicit. Modular. Testable. Observable. Secure.
 - No feature is complete without validation, authorization, error
   handling, and tests appropriate to its risk
 
+## Stack
+
+- **Language:** TypeScript, throughout — backend and frontend. No Python
+  anywhere in this repo.
+- **Runtime:** Node.js, single monolithic service (not microservices —
+  see rule 30 below).
+- **Database:** MySQL. Access via a typed query builder (Kysely) over
+  `mysql2`, not a heavyweight ORM with generated magic — keeps SQL
+  explicit and auditable per rule 9 (no hidden magic) and rule 8
+  (database is not the domain).
+
 ## Layout
 
 ```
 backend/
-├── app/
-│   ├── domains/           # customers, suppliers, products, inventory,
-│   │                       # procurement, sales, orders, production,
-│   │                       # scheduling, users, notifications, ...
+├── src/
+│   ├── domains/            # customers, suppliers, products, inventory,
+│   │                        # procurement, sales, orders, production,
+│   │                        # scheduling, users, notifications, ...
 │   │   └── <domain>/
-│   │       ├── models.py       # domain entities (not ORM models)
-│   │       ├── rules.py        # business rules — one home per rule
-│   │       └── state_machine.py (where the domain has a lifecycle)
+│   │       ├── entities.ts      # domain entities (not DB row types)
+│   │       ├── rules.ts         # business rules — one home per rule
+│   │       └── stateMachine.ts  # where the domain has a lifecycle
 │   │
 │   ├── application/
-│   │   ├── commands/       # CreateQuotation, ApproveQuotation, ...
+│   │   ├── commands/       # createQuotation, approveQuotation, ...
 │   │   ├── queries/
 │   │   └── services/
 │   │
 │   ├── infrastructure/
-│   │   ├── database/       # ORM models + repositories, separate from domain models
+│   │   ├── database/       # Kysely db instance, row types, repositories
 │   │   ├── integrations/   # email, WhatsApp, AI, accounting adapters
 │   │   ├── messaging/
 │   │   └── storage/
@@ -41,15 +52,20 @@ backend/
 │   │   ├── middleware/
 │   │   └── dependencies/
 │   │
-│   └── core/
-│       ├── config/          # single source of settings, incl. branding/tenant config
-│       ├── security/
-│       ├── errors/
-│       └── logging/
+│   ├── core/
+│   │   ├── config/          # single source of settings, incl. branding/tenant config
+│   │   ├── security/
+│   │   ├── errors/
+│   │   └── logging/
+│   │
+│   └── main.ts
 │
 ├── tests/
 ├── migrations/
 └── scripts/
+
+frontend/                    # React + TypeScript (unchanged language,
+                              # existing convention from jdk_clean)
 ```
 
 ## Rules this structure exists to enforce
