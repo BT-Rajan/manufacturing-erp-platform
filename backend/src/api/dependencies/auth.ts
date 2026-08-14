@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { AuthError } from "../../core/errors/index.js";
+import { AuthError, ForbiddenError } from "../../core/errors/index.js";
 import { decodeAccessToken } from "../../core/security/security.js";
 import { getDb } from "../../infrastructure/database/connection.js";
 
@@ -9,7 +9,8 @@ export interface AuthenticatedUser {
   username: string;
   email: string;
   fullName: string;
-  role: string;
+  role: "admin" | "manager" | "staff" | "viewer";
+  department: "sales" | "procurement" | "warehouse" | null;
 }
 
 declare module "express-serve-static-core" {
@@ -38,10 +39,11 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       .selectFrom("users")
       .selectAll()
       .where("id", "=", Number(claims.sub))
+      .where("deleted_at", "is", null)
       .executeTakeFirst();
 
     if (!row || !row.is_active) {
-      throw new AuthError("User not found or inactive.");
+      throw new AuthError("Account is no longer active.");
     }
 
     req.user = {
@@ -50,9 +52,21 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       email: row.email,
       fullName: row.full_name,
       role: row.role,
+      department: row.department,
     };
     next();
   } catch (err) {
     next(err);
   }
+}
+
+/** Restricts a route to specific roles -- mirrors jdk_clean's require_role. */
+export function requireRole(...allowedRoles: AuthenticatedUser["role"][]) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      next(new ForbiddenError());
+      return;
+    }
+    next();
+  };
 }

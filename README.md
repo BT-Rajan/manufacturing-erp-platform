@@ -27,9 +27,14 @@ not microservices (see `docs/ARCHITECTURE.md` rule 30).
 
 ## Status
 
-Pass 0 (foundation) — repo scaffolded, plan and architecture documented,
-no domain code yet. See [`docs/PLAN.md`](docs/PLAN.md) for the full
-multi-pass roadmap.
+Pass 1 complete (master data domains). Users, Customers, Suppliers,
+Supplier Materials, Raw Materials, Machines, and Products all have full
+CRUD, soft delete/restore, audit history, admin-configurable field
+requirements, and a department-based permission matrix -- verified
+against real MySQL (34/34 tests) and live `curl`. See
+[`docs/PARITY_CHECKLIST.md`](docs/PARITY_CHECKLIST.md) for exactly
+what's covered and what's still open, and
+[`docs/PLAN.md`](docs/PLAN.md) for the full multi-pass roadmap.
 
 ## Docs
 

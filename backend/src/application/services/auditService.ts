@@ -53,7 +53,15 @@ export async function history(entityType: string, entityId: string | number): Pr
     entityType: row.entity_type,
     entityId: row.entity_id,
     action: row.action,
-    changes: row.changes ? (JSON.parse(row.changes) as Record<string, unknown>) : null,
+    // mysql2 auto-parses JSON columns into JS values on read, so
+    // row.changes normally arrives as an object already -- but handle
+    // a raw string defensively in case that ever changes upstream.
+    changes:
+      row.changes === null
+        ? null
+        : typeof row.changes === "string"
+          ? (JSON.parse(row.changes) as Record<string, unknown>)
+          : (row.changes as Record<string, unknown>),
     performedBy: row.performed_by,
     performedAt: new Date(row.performed_at),
   }));

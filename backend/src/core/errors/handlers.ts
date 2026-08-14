@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 
 import { AppError } from "./exceptions.js";
 import { logger } from "../logging/logger.js";
@@ -16,6 +17,16 @@ export function errorHandler(
     logger.warn(`app_error code=${err.errorCode} request_id=${requestId} path=${req.path}`);
     res.status(err.statusCode).json({
       error: { code: err.errorCode, message: err.message, requestId },
+    });
+    return;
+  }
+
+  if (err instanceof ZodError) {
+    const firstIssue = err.issues[0];
+    const message = firstIssue ? `${firstIssue.path.join(".")}: ${firstIssue.message}` : "Invalid request data.";
+    logger.warn(`validation_error request_id=${requestId} path=${req.path}`);
+    res.status(422).json({
+      error: { code: "validation_error", message, requestId },
     });
     return;
   }

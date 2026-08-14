@@ -2,10 +2,19 @@ import cors from "cors";
 import express, { type Express } from "express";
 
 import { errorHandler } from "../core/errors/index.js";
+import { getSettings } from "../core/config/settings.js";
+import { customersRouter } from "../domains/customers/route.js";
+import { fieldConfigRouter } from "../domains/fieldConfigAdmin/route.js";
+import { machinesRouter } from "../domains/machines/route.js";
+import { permissionsRouter } from "../domains/permissions/route.js";
+import { productsRouter } from "../domains/products/route.js";
+import { rawMaterialsRouter } from "../domains/rawMaterials/route.js";
+import { supplierMaterialsRouter } from "../domains/supplierMaterials/route.js";
+import { suppliersRouter } from "../domains/suppliers/route.js";
+import { usersRouter } from "../domains/users/route.js";
 import { requestContext } from "./middleware/requestContext.js";
 import { authRouter } from "./routes/auth.js";
 import { healthRouter } from "./routes/health.js";
-import { getSettings } from "../core/config/settings.js";
 
 export function createApp(): Express {
   const settings = getSettings();
@@ -17,6 +26,19 @@ export function createApp(): Express {
 
   app.use(healthRouter);
   app.use(authRouter);
+
+  // Pass 1: master data domains + the admin surfaces that make them
+  // configurable (permissions matrix, field config) and accountable
+  // (users management).
+  app.use(customersRouter);
+  app.use(suppliersRouter);
+  app.use(supplierMaterialsRouter);
+  app.use(rawMaterialsRouter);
+  app.use(machinesRouter);
+  app.use(productsRouter);
+  app.use(usersRouter);
+  app.use(permissionsRouter);
+  app.use(fieldConfigRouter);
 
   // Must be registered last -- Express only treats a 4-arg function as
   // an error handler.

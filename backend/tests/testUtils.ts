@@ -4,6 +4,9 @@ import { getDb, resetDbConnection } from "../src/infrastructure/database/connect
 export const TEST_USERNAME = "pass0admin";
 export const TEST_PASSWORD = "Pass0Test!";
 
+export const STAFF_USERNAME = "pass1staffsales";
+export const STAFF_PASSWORD = "Pass1Staff!";
+
 export async function seedTestUser(): Promise<void> {
   const db = getDb();
   const existing = await db
@@ -12,19 +15,40 @@ export async function seedTestUser(): Promise<void> {
     .where("username", "=", TEST_USERNAME)
     .executeTakeFirst();
 
-  if (existing) return;
+  if (!existing) {
+    await db
+      .insertInto("users")
+      .values({
+        username: TEST_USERNAME,
+        email: "pass0admin@example.com",
+        password_hash: await hashPassword(TEST_PASSWORD),
+        full_name: "Pass 0 Admin",
+        role: "admin",
+        is_active: true,
+      })
+      .execute();
+  }
 
-  await db
-    .insertInto("users")
-    .values({
-      username: TEST_USERNAME,
-      email: "pass0admin@example.com",
-      password_hash: await hashPassword(TEST_PASSWORD),
-      full_name: "Pass 0 Admin",
-      role: "admin",
-      is_active: true,
-    })
-    .execute();
+  const staffExisting = await db
+    .selectFrom("users")
+    .selectAll()
+    .where("username", "=", STAFF_USERNAME)
+    .executeTakeFirst();
+
+  if (!staffExisting) {
+    await db
+      .insertInto("users")
+      .values({
+        username: STAFF_USERNAME,
+        email: "pass1staffsales@example.com",
+        password_hash: await hashPassword(STAFF_PASSWORD),
+        full_name: "Pass 1 Staff Sales",
+        role: "staff",
+        department: "sales",
+        is_active: true,
+      })
+      .execute();
+  }
 }
 
 export async function closeTestDb(): Promise<void> {
