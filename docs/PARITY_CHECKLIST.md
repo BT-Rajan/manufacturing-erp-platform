@@ -27,8 +27,12 @@ or assumption — as of the migration start date.
 - [x] Products: CRUD, unit, product type, selling price, machine/production
       formula inputs (production hours/unit, workers required)
 - [x] Machines: CRUD, capacity
-- [ ] BOM (Bill of Materials): lines per product, explode, history
-- [ ] Inventory: stock levels, movements
+- [x] BOM (Bill of Materials): lines per product, explode, history,
+      cycle detection, multi-level explosion with scrap%
+- [x] Inventory: stock levels, movements, low-stock, reserve/release
+      (reserve/release ported as application functions for Pass 2d
+      Orders to call -- no HTTP route yet, matching jdk_clean, which
+      doesn't expose them as endpoints either)
 - [ ] MRP: materials requirements planning calculation
 - [ ] Feasibility checks: production feasibility given machine/capacity/BOM
 - [ ] Quotations: create, calculations, approval workflow

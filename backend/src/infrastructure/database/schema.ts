@@ -149,6 +149,44 @@ export interface ProductsTable extends SoftDeletableColumns {
   status: "active" | "inactive";
 }
 
+export interface BomLinesTable extends SoftDeletableColumns {
+  parent_product_id: number;
+  component_type: "raw_material" | "product";
+  component_id: number;
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+  unit: string;
+  scrap_percent: ColumnType<string, string | number | undefined, string | number>;
+}
+
+export interface FinishedGoodsInventoryTable {
+  id: Generated<number>;
+  product_id: number;
+  quantity_on_hand: ColumnType<string, string | number | undefined, string | number>;
+  quantity_reserved: ColumnType<string, string | number | undefined, string | number>;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+}
+
+export interface RawMaterialInventoryTable {
+  id: Generated<number>;
+  raw_material_id: number;
+  quantity_on_hand: ColumnType<string, string | number | undefined, string | number>;
+  quantity_reserved: ColumnType<string, string | number | undefined, string | number>;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+}
+
+export interface StockMovementsTable {
+  id: Generated<number>;
+  item_type: "raw_material" | "product";
+  item_id: number;
+  movement_type: "receipt" | "issue" | "adjustment" | "production_in" | "production_out" | "return";
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+  reference_type: string | null;
+  reference_id: number | null;
+  notes: string | null;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+}
+
 export interface Database {
   users: UsersTable;
   audit_log: AuditLogTable;
@@ -160,4 +198,8 @@ export interface Database {
   supplier_materials: SupplierMaterialsTable;
   machines: MachinesTable;
   products: ProductsTable;
+  bom_lines: BomLinesTable;
+  finished_goods_inventory: FinishedGoodsInventoryTable;
+  raw_material_inventory: RawMaterialInventoryTable;
+  stock_movements: StockMovementsTable;
 }

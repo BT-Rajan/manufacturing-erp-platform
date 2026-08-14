@@ -3,8 +3,10 @@ import express, { type Express } from "express";
 
 import { errorHandler } from "../core/errors/index.js";
 import { getSettings } from "../core/config/settings.js";
+import { bomRouter } from "../domains/bom/route.js";
 import { customersRouter } from "../domains/customers/route.js";
 import { fieldConfigRouter } from "../domains/fieldConfigAdmin/route.js";
+import { inventoryRouter } from "../domains/inventory/route.js";
 import { machinesRouter } from "../domains/machines/route.js";
 import { permissionsRouter } from "../domains/permissions/route.js";
 import { productsRouter } from "../domains/products/route.js";
@@ -39,6 +41,10 @@ export function createApp(): Express {
   app.use(usersRouter);
   app.use(permissionsRouter);
   app.use(fieldConfigRouter);
+
+  // Pass 2a: BOM + inventory.
+  app.use(bomRouter);
+  app.use(inventoryRouter);
 
   // Must be registered last -- Express only treats a 4-arg function as
   // an error handler.
