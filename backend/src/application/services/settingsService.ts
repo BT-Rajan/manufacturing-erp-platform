@@ -20,6 +20,30 @@ export async function update(values: Record<string, string>, performedBy: number
   return getAll();
 }
 
+export async function isAutoCreateQuotationEnabled(): Promise<boolean> {
+  const values = await getAll();
+  const raw = (values["auto_create_quotation_from_feasibility"] ?? "true").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
+export async function getDefaultTaxRate(): Promise<number> {
+  const values = await getAll();
+  const parsed = Number.parseFloat(values["default_tax_rate"] ?? "0");
+  return Number.isFinite(parsed) ? Math.max(parsed, 0) : 0;
+}
+
+/** null means the large-discount approval gate is off -- admin hasn't
+ * set a threshold. A set value of 0 would gate everything, presumably
+ * never intended, so an empty/unparseable setting is treated the same
+ * as "off" rather than "gate at zero". */
+export async function getLargeDiscountApprovalThreshold(): Promise<number | null> {
+  const values = await getAll();
+  const raw = (values["large_discount_approval_threshold"] ?? "").trim();
+  if (!raw) return null;
+  const threshold = Number.parseFloat(raw);
+  if (!Number.isFinite(threshold)) return null;
+  return threshold > 0 ? threshold : null;
+}
 /** (totalWorkers, workdayHours) for feasibility's capacity scan.
  * Unset/unparseable values default to (0, 8.0) -- 0 workers means the
  * worker-hours side of the capacity check is simply skipped (same

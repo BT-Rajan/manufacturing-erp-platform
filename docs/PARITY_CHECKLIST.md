@@ -44,8 +44,16 @@ or assumption — as of the migration start date.
       Deal linking and auto-create-quotation-on-feasible explicitly
       deferred to Pass 2c (deal_id column exists, FK + the calls into
       deal_service/quotation_service land once those exist)
-- [ ] Quotations: create, calculations, approval workflow
-- [ ] Deals: deal + deal-detail lifecycle
+- [x] Quotations: create, calculations (line + document discount, tax,
+      shared pricingService), approval workflow (draft/sent/accepted/
+      rejected/expired/converted state machine, large-discount
+      approval gate, expiry escalation)
+- [x] Deals: deal + deal-detail lifecycle -- loose-grouping across
+      feasibility/quotation stages, furthest_stage tracking, status
+      reconciliation/reopen on stage terminal states. Deal-detail's
+      orders/production_batches/delivery_notes sections are honest
+      empty arrays until Pass 2d/2e widen the orders stub and build
+      those domains
 - [ ] Orders: creation, order journey/status history, order lines
 - [ ] Purchase orders: creation, receipt
 - [ ] Delivery notes: creation, PDF generation, signature capture

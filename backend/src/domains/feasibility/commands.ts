@@ -5,12 +5,13 @@ import { assertReasonGiven, assertTransitionAllowed } from "../../core/workflow/
 import * as bomRepository from "../bom/repository.js";
 import * as bomRules from "../bom/rules.js";
 import * as customersRepository from "../customers/repository.js";
+import * as dealService from "../deals/service.js";
 import { getDb } from "../../infrastructure/database/connection.js";
 import * as inventoryQueries from "../inventory/queries.js";
 import * as productsRepository from "../products/repository.js";
 import * as rawMaterialsRepository from "../rawMaterials/repository.js";
 import { checkCapacity } from "./capacityCheck.js";
-import { ALLOWED_TRANSITIONS, STALE_AFTER_DAYS, type FeasibilityStatus } from "./constants.js";
+import { QUOTABLE_STATUSES, ALLOWED_TRANSITIONS, STALE_AFTER_DAYS, type FeasibilityStatus } from "./constants.js";
 import { getFeasibility } from "./queries.js";
 import * as repository from "./repository.js";
 import type { FeasibilityCreateInput, FeasibilityExceptionDecisionInput } from "./schema.js";
@@ -30,7 +31,8 @@ export async function createFeasibility(input: FeasibilityCreateInput, performed
   }
 
   const feasibilityNumber = await nextNumber("FEASIBILITY");
-  const id = await repository.create(feasibilityNumber, input, performedBy);
+  const deal = await dealService.getOrCreateForNewStage(input.deal_id ?? null, input.customer_id, "feasibility", performedBy);
+  const id = await repository.create(feasibilityNumber, deal.id, input, performedBy);
   await record({ entityType: TABLE_NAME, entityId: id, action: "create", performedBy });
   return getFeasibility(id);
 }
@@ -133,8 +135,9 @@ export async function runCheck(id: number, performedBy: number | null) {
     changes: { status: [feasibility.status, newStatus] },
   });
 
-  // Auto-create-quotation-on-feasible is wired in Pass 2c once
-  // quotation_service exists -- see docs/PARITY_CHECKLIST.md.
+  if (newStatus === "feasible") {
+    await maybeAutoCreateQuotation(id, performedBy);
+  }
 
   return getFeasibility(id);
 }
@@ -177,9 +180,11 @@ export async function decideException(
     changes: { status: [feasibility.status, newStatus] },
   });
 
-  // Auto-create-quotation-on-approved-exception / deal reconciliation
-  // on rejection are wired in Pass 2c once deal_service/
-  // quotation_service exist -- see docs/PARITY_CHECKLIST.md.
+  if (newStatus === "exception_approved") {
+    await maybeAutoCreateQuotation(id, performedBy);
+  } else if (newStatus === "exception_rejected") {
+    await dealService.reconcileDealStatus(feasibility.deal_id, performedBy);
+  }
 
   return getFeasibility(id);
 }
@@ -199,7 +204,7 @@ export async function closeFeasibility(id: number, reason: string, performedBy: 
     changes: { status: [feasibility.status, "closed"] },
   });
 
-  // deal_service.reconcile_deal_status wired in Pass 2c.
+  await dealService.reconcileDealStatus(feasibility.deal_id, performedBy);
 
   return getFeasibility(id);
 }
@@ -251,7 +256,7 @@ export async function reviveFeasibility(id: number, performedBy: number | null) 
     changes: { status: [feasibility.status, "draft"] },
   });
 
-  // deal_service.reopen_deal wired in Pass 2c.
+  await dealService.reopenDeal(feasibility.deal_id, performedBy);
 
   return getFeasibility(id);
 }
@@ -318,6 +323,82 @@ export async function deleteFeasibility(id: number, performedBy: number | null):
   }
   await repository.softDelete(id, performedBy);
   await record({ entityType: TABLE_NAME, entityId: id, action: "delete", performedBy });
+}
+
+/** Called by quotation creation once it has validated this feasibility
+ * check is quotable; not exposed as its own endpoint. */
+export async function markConverted(id: number, performedBy: number | null): Promise<void> {
+  const feasibility = await repository.findById(id);
+  if (!feasibility) throw new NotFoundAppError("Feasibility check");
+  if (!QUOTABLE_STATUSES.has(feasibility.status)) {
+    throw new ConflictError(
+      `Feasibility check '${feasibility.feasibility_number}' is not in a quotable status (current status: '${feasibility.status}').`,
+    );
+  }
+  await repository.updateStatus(id, { status: "converted" }, performedBy);
+  await record({
+    entityType: TABLE_NAME,
+    entityId: id,
+    action: "update",
+    performedBy,
+    changes: { status: [feasibility.status, "converted"] },
+  });
+}
+
+/** Fires the moment a check turns feasible (runCheck) or Sales
+ * overrides an infeasible result (decideException, approved) -- if
+ * enabled (Settings, admin/manager-only to change), drafts a
+ * quotation right then, pre-filled from the check's own lines, on the
+ * same deal. If disabled, does nothing -- Sales creates the quotation
+ * by hand as before.
+ *
+ * Never throws: an auto-create failure (disabled, already converted,
+ * or any other edge case) should never break the feasibility action
+ * that triggered it. Dynamic import to break the circular dependency
+ * -- quotations/commands.ts already imports this module (to call
+ * markConverted), so a top-level import back here would be circular.
+ * Mirrors jdk_clean's own local-import fix for the same reason. */
+async function maybeAutoCreateQuotation(feasibilityId: number, performedBy: number | null): Promise<void> {
+  const { isAutoCreateQuotationEnabled } = await import("../../application/services/settingsService.js");
+  if (!(await isAutoCreateQuotationEnabled())) return;
+
+  const feasibility = await getFeasibility(feasibilityId);
+  const lines = [];
+  for (const line of feasibility.lines) {
+    const product = await productsRepository.findById(line.product_id);
+    lines.push({
+      product_id: line.product_id,
+      quantity: Number(line.quantity),
+      unit_price: product ? Number(product.selling_price) : 0,
+      discount_percent: 0,
+    });
+  }
+  if (lines.length === 0) return;
+
+  try {
+    const { createQuotation } = await import("../quotations/commands.js");
+    await createQuotation(
+      {
+        customer_id: feasibility.customer_id,
+        deal_id: feasibility.deal_id,
+        feasibility_id: feasibility.id,
+        quotation_date: new Date().toISOString().slice(0, 10),
+        valid_until: null,
+        notes: `Auto-created from feasibility check ${feasibility.feasibility_number}.`,
+        lines,
+      },
+      performedBy,
+      true,
+    );
+  } catch (err) {
+    // Already converted, or some other reason it's not quotable right
+    // now -- fine, this is best-effort convenience, not a hard
+    // requirement. Sales can still create one by hand. Only swallow
+    // the errors this is actually meant to tolerate.
+    if (!(err instanceof ConflictError) && !(err instanceof ValidationAppError)) {
+      throw err;
+    }
+  }
 }
 
 export async function restoreFeasibility(id: number, performedBy: number | null) {

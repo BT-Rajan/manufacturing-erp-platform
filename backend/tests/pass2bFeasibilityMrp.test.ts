@@ -108,7 +108,7 @@ describe("Feasibility: materials-only path (no machine/capacity involved)", () =
     expect(secondRun.status).toBe(409);
   });
 
-  it("passes feasible once enough stock is received", async () => {
+  it("passes feasible once enough stock is received, and auto-creates a quotation (converting it)", async () => {
     await asAdmin(request(app).post("/api/inventory/adjust")).send({
       item_type: "raw_material",
       item_id: materialId,
@@ -124,7 +124,11 @@ describe("Feasibility: materials-only path (no machine/capacity involved)", () =
 
     const runRes = await asAdmin(request(app).post(`/api/feasibilities/${id}/run-check`));
     expect(runRes.status).toBe(200);
-    expect(runRes.body.status).toBe("feasible");
+    // auto_create_quotation_from_feasibility defaults to true (Pass 2c) --
+    // a fully-feasible check immediately converts as the auto-created
+    // quotation marks it converted. See Pass 2c's feasibility<->quotation
+    // integration tests for the quotation side of this.
+    expect(runRes.body.status).toBe("converted");
     expect(runRes.body.lines[0].is_feasible).toBe(true);
   });
 
@@ -147,6 +151,13 @@ describe("Feasibility: exception decision, close, revive, admin review, deletion
   let exceptionPendingId: number;
 
   beforeAll(async () => {
+    // These tests exercise the manual state machine in isolation --
+    // disable auto-create-quotation-on-feasible/approved-exception
+    // (Pass 2c) so a check doesn't jump straight to 'converted' out
+    // from under these assertions. Direct settings write since the
+    // settings admin HTTP route is Pass 4 work.
+    await getDb().updateTable("settings").set({ setting_value: "false" }).where("setting_key", "=", "auto_create_quotation_from_feasibility").execute();
+
     customerId = await createCustomer();
     materialId = await createRawMaterial("exc");
     productId = await createProduct("exc");
@@ -230,6 +241,10 @@ describe("Feasibility: exception decision, close, revive, admin review, deletion
     const res = await asAdmin(request(app).get(`/api/feasibilities/${exceptionPendingId}/history`));
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThanOrEqual(5); // create + run + decision + close + revive + run + decision + review
+  });
+
+  afterAll(async () => {
+    await getDb().updateTable("settings").set({ setting_value: "true" }).where("setting_key", "=", "auto_create_quotation_from_feasibility").execute();
   });
 });
 

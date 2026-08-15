@@ -274,6 +274,57 @@ export interface FeasibilityLinesTable {
   capacity_shortfall_json: string | null;
 }
 
+export interface DealsTable {
+  id: Generated<number>;
+  deal_number: string;
+  customer_id: number;
+  furthest_stage: "feasibility" | "quotation" | "order" | "production" | "delivery";
+  status: "open" | "cancelled";
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface QuotationsTable {
+  id: Generated<number>;
+  quotation_number: string;
+  customer_id: number;
+  deal_id: number | null;
+  quotation_date: ColumnType<Date, string, string>;
+  valid_until: ColumnType<Date | null, string | null, string | null>;
+  status: "draft" | "sent" | "accepted" | "rejected" | "expired" | "converted";
+  subtotal_amount: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  discount_amount: ColumnType<string, string | number | undefined, string | number>;
+  tax_rate: ColumnType<string, string | number | undefined, string | number>;
+  tax_amount: ColumnType<string, string | number | undefined, string | number>;
+  total_amount: ColumnType<string, string | number | undefined, string | number>;
+  notes: string | null;
+  converted_order_id: number | null;
+  feasibility_id: number | null;
+  auto_created: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  close_reason: string | null;
+  approved_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  approved_by: number | null;
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface QuotationDetailsTable {
+  id: Generated<number>;
+  quotation_id: number;
+  product_id: number;
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+  unit_price: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  line_total: ColumnType<string, string | number | undefined, string | number>;
+}
+
 export interface Database {
   users: UsersTable;
   audit_log: AuditLogTable;
@@ -296,4 +347,7 @@ export interface Database {
   production_schedules: ProductionSchedulesTable;
   feasibility_checks: FeasibilityChecksTable;
   feasibility_lines: FeasibilityLinesTable;
+  deals: DealsTable;
+  quotations: QuotationsTable;
+  quotation_details: QuotationDetailsTable;
 }

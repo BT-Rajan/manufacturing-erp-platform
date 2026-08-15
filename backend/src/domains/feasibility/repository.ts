@@ -80,6 +80,7 @@ export async function listAvailableForQuotation(customerId?: number) {
 
 export async function create(
   feasibilityNumber: string,
+  dealId: number,
   input: FeasibilityCreateInput,
   performedBy: number | null,
 ) {
@@ -90,7 +91,7 @@ export async function create(
       .values({
         feasibility_number: feasibilityNumber,
         customer_id: input.customer_id,
-        deal_id: null, // wired in Pass 2c
+        deal_id: dealId,
         status: "draft",
         admin_review_required: false,
         required_by_date: input.required_by_date ?? null,

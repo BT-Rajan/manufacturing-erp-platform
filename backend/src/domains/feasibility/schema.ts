@@ -20,6 +20,7 @@ export const feasibilityLineInputSchema = z.object({
 
 export const feasibilityCreateSchema = z.object({
   customer_id: z.number().int().positive(),
+  deal_id: z.number().int().positive().nullish(),
   required_by_date: z
     .union([notInPast("required_by_date cannot be in the past."), z.null()])
     .optional(),
