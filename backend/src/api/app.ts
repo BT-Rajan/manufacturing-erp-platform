@@ -5,9 +5,11 @@ import { errorHandler } from "../core/errors/index.js";
 import { getSettings } from "../core/config/settings.js";
 import { bomRouter } from "../domains/bom/route.js";
 import { customersRouter } from "../domains/customers/route.js";
+import { feasibilityRouter } from "../domains/feasibility/route.js";
 import { fieldConfigRouter } from "../domains/fieldConfigAdmin/route.js";
 import { inventoryRouter } from "../domains/inventory/route.js";
 import { machinesRouter } from "../domains/machines/route.js";
+import { mrpRouter } from "../domains/mrp/route.js";
 import { permissionsRouter } from "../domains/permissions/route.js";
 import { productsRouter } from "../domains/products/route.js";
 import { rawMaterialsRouter } from "../domains/rawMaterials/route.js";
@@ -45,6 +47,10 @@ export function createApp(): Express {
   // Pass 2a: BOM + inventory.
   app.use(bomRouter);
   app.use(inventoryRouter);
+
+  // Pass 2b: feasibility + MRP.
+  app.use(feasibilityRouter);
+  app.use(mrpRouter);
 
   // Must be registered last -- Express only treats a 4-arg function as
   // an error handler.

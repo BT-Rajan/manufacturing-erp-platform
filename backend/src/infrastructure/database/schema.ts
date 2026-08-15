@@ -187,6 +187,93 @@ export interface StockMovementsTable {
   created_by: number | null;
 }
 
+export interface NumberSeriesTable {
+  id: Generated<number>;
+  doc_type: string;
+  prefix: string;
+  next_number: number;
+  padding: number;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+}
+
+export interface SettingsTable {
+  id: Generated<number>;
+  setting_key: string;
+  setting_value: string | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+}
+
+/** Minimal stub -- see migration 0004's header comment. Full domain
+ * (discounts, tax, approval workflow, etc.) lands in Pass 2d. */
+export interface OrdersTable {
+  id: Generated<number>;
+  order_number: string | null;
+  customer_id: number;
+  status: "draft" | "confirmed" | "in_production" | "ready_to_ship" | "shipped" | "delivered" | "cancelled";
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+}
+
+export interface OrderLinesTable {
+  id: Generated<number>;
+  order_id: number;
+  product_id: number;
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+}
+
+/** Minimal stub -- see migration 0004's header comment. Full domain
+ * lands in Pass 2e. */
+export interface ProductionSchedulesTable {
+  id: Generated<number>;
+  batch_number: string | null;
+  product_id: number;
+  machine_id: number | null;
+  order_id: number | null;
+  planned_quantity: ColumnType<string, string | number | undefined, string | number>;
+  scheduled_start: ColumnType<Date, string, string>;
+  scheduled_end: ColumnType<Date, string, string>;
+  status: "planned" | "in_progress" | "completed" | "cancelled";
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+}
+
+export interface FeasibilityChecksTable {
+  id: Generated<number>;
+  feasibility_number: string;
+  customer_id: number;
+  deal_id: number | null;
+  status: "draft" | "feasible" | "exception_pending" | "exception_approved" | "exception_rejected" | "closed" | "converted";
+  required_by_date: ColumnType<string | null, string | null, string | null>;
+  checked_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  exception_reason: string | null;
+  exception_by: number | null;
+  close_reason: string | null;
+  notes: string | null;
+  admin_review_required: ColumnType<boolean, boolean | number, boolean | number>;
+  admin_review_reason: "override" | "stale_open" | null;
+  admin_reviewed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  admin_reviewed_by: number | null;
+  admin_review_notes: string | null;
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface FeasibilityLinesTable {
+  id: Generated<number>;
+  feasibility_id: number;
+  product_id: number;
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+  covered_by_stock: ColumnType<string | null, string | number | null | undefined, string | number | null>;
+  bom_missing: ColumnType<boolean | null, boolean | number | null | undefined, boolean | number | null>;
+  is_feasible: ColumnType<boolean | null, boolean | number | null | undefined, boolean | number | null>;
+  shortfall_json: string | null;
+  capacity_ok: ColumnType<boolean | null, boolean | number | null | undefined, boolean | number | null>;
+  capacity_shortfall_json: string | null;
+}
+
 export interface Database {
   users: UsersTable;
   audit_log: AuditLogTable;
@@ -202,4 +289,11 @@ export interface Database {
   finished_goods_inventory: FinishedGoodsInventoryTable;
   raw_material_inventory: RawMaterialInventoryTable;
   stock_movements: StockMovementsTable;
+  number_series: NumberSeriesTable;
+  settings: SettingsTable;
+  orders: OrdersTable;
+  order_lines: OrderLinesTable;
+  production_schedules: ProductionSchedulesTable;
+  feasibility_checks: FeasibilityChecksTable;
+  feasibility_lines: FeasibilityLinesTable;
 }

@@ -33,8 +33,17 @@ or assumption — as of the migration start date.
       (reserve/release ported as application functions for Pass 2d
       Orders to call -- no HTTP route yet, matching jdk_clean, which
       doesn't expose them as endpoints either)
-- [ ] MRP: materials requirements planning calculation
-- [ ] Feasibility checks: production feasibility given machine/capacity/BOM
+- [x] MRP: materials requirements planning calculation -- demand
+      aggregation (scheduled batches + un-batched outstanding orders,
+      no double-counting), BOM explosion, net against on-hand stock,
+      greedy supplier-purchase suggestions by lead time
+- [x] Feasibility checks: production feasibility given machine/capacity/BOM
+      -- full state machine (draft/run-check/exception decision/close/
+      revive/admin-review/stale-escalation), materials shortfall via
+      BOM + inventory, real machine + shared-worker-pool capacity scan.
+      Deal linking and auto-create-quotation-on-feasible explicitly
+      deferred to Pass 2c (deal_id column exists, FK + the calls into
+      deal_service/quotation_service land once those exist)
 - [ ] Quotations: create, calculations, approval workflow
 - [ ] Deals: deal + deal-detail lifecycle
 - [ ] Orders: creation, order journey/status history, order lines
