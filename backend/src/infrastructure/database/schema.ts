@@ -203,22 +203,87 @@ export interface SettingsTable {
   updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
 }
 
-/** Minimal stub -- see migration 0004's header comment. Full domain
- * (discounts, tax, approval workflow, etc.) lands in Pass 2d. */
+/** Widened from the Pass 2b stub to the full domain (see migration
+ * 0006's header). */
 export interface OrdersTable {
   id: Generated<number>;
   order_number: string | null;
   customer_id: number;
+  deal_id: number | null;
+  order_date: ColumnType<Date, string, string>;
+  requested_delivery_date: ColumnType<Date | null, string | null, string | null>;
+  confirmed_delivery_date: ColumnType<Date | null, string | null, string | null>;
   status: "draft" | "confirmed" | "in_production" | "ready_to_ship" | "shipped" | "delivered" | "cancelled";
+  subtotal_amount: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  discount_amount: ColumnType<string, string | number | undefined, string | number>;
+  tax_rate: ColumnType<string, string | number | undefined, string | number>;
+  tax_amount: ColumnType<string, string | number | undefined, string | number>;
+  total_amount: ColumnType<string, string | number | undefined, string | number>;
+  notes: string | null;
+  close_reason: string | null;
+  approved_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  approved_by: number | null;
+  admin_review_required: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  admin_reviewed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  admin_reviewed_by: number | null;
+  admin_review_notes: string | null;
   deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
   created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
 }
 
+/** Widened from the Pass 2b stub to the full domain. */
 export interface OrderLinesTable {
   id: Generated<number>;
   order_id: number;
   product_id: number;
   quantity: ColumnType<string, string | number | undefined, string | number>;
+  unit_price: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  line_total: ColumnType<string, string | number | undefined, string | number>;
+}
+
+export interface PurchaseOrdersTable {
+  id: Generated<number>;
+  po_number: string;
+  supplier_id: number;
+  order_date: ColumnType<Date, string, string>;
+  expected_delivery_date: ColumnType<Date | null, string | null, string | null>;
+  status: "draft" | "sent" | "confirmed" | "partially_received" | "received" | "cancelled";
+  subtotal_amount: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  discount_amount: ColumnType<string, string | number | undefined, string | number>;
+  tax_rate: ColumnType<string, string | number | undefined, string | number>;
+  tax_amount: ColumnType<string, string | number | undefined, string | number>;
+  total_amount: ColumnType<string, string | number | undefined, string | number>;
+  notes: string | null;
+  auto_created: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  cancel_reason: string | null;
+  approved_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  approved_by: number | null;
+  admin_review_required: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  admin_reviewed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  admin_reviewed_by: number | null;
+  admin_review_notes: string | null;
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface PurchaseOrderLinesTable {
+  id: Generated<number>;
+  purchase_order_id: number;
+  raw_material_id: number;
+  quantity: ColumnType<string, string | number | undefined, string | number>;
+  unit_price: ColumnType<string, string | number | undefined, string | number>;
+  discount_percent: ColumnType<string, string | number | undefined, string | number>;
+  line_total: ColumnType<string, string | number | undefined, string | number>;
+  received_quantity: ColumnType<string, string | number | undefined, string | number>;
 }
 
 /** Minimal stub -- see migration 0004's header comment. Full domain
@@ -350,4 +415,6 @@ export interface Database {
   deals: DealsTable;
   quotations: QuotationsTable;
   quotation_details: QuotationDetailsTable;
+  purchase_orders: PurchaseOrdersTable;
+  purchase_order_lines: PurchaseOrderLinesTable;
 }

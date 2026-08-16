@@ -54,8 +54,17 @@ or assumption — as of the migration start date.
       orders/production_batches/delivery_notes sections are honest
       empty arrays until Pass 2d/2e widen the orders stub and build
       those domains
-- [ ] Orders: creation, order journey/status history, order lines
-- [ ] Purchase orders: creation, receipt
+- [x] Orders: creation, status history (via /history; friendly /journey
+      view deferred as presentational sugar), order lines, quotation
+      conversion, stock reserve/consume/release, large-discount
+      approval gate, overdue delivery escalation. Auto-schedule-
+      production-on-confirm, auto-create-delivery-note-on-ready-to-ship,
+      and cancelling-active-production-batches all deferred to Pass 2e
+      (need production_service/delivery_note_service)
+- [x] Purchase orders: creation, receipt (partial + full, per-line),
+      large-PO and large-discount approval gates, auto-draft from MRP
+      shortages (real greedy allocation, grouped by supplier, skips
+      materials already covered by a pending PO)
 - [ ] Delivery notes: creation, PDF generation, signature capture
 - [ ] Production schedules: scheduling, capacity service, completion
 - [ ] Calendar: calendar events tied to schedules/deliveries

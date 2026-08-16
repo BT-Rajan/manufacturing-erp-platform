@@ -26,6 +26,15 @@ export async function isAutoCreateQuotationEnabled(): Promise<boolean> {
   return raw === "true" || raw === "1" || raw === "yes";
 }
 
+export async function getLargePoApprovalThreshold(): Promise<number | null> {
+  const values = await getAll();
+  const raw = (values["large_po_approval_threshold"] ?? "").trim();
+  if (!raw) return null;
+  const threshold = Number.parseFloat(raw);
+  if (!Number.isFinite(threshold)) return null;
+  return threshold > 0 ? threshold : null;
+}
+
 export async function getDefaultTaxRate(): Promise<number> {
   const values = await getAll();
   const parsed = Number.parseFloat(values["default_tax_rate"] ?? "0");

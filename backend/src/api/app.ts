@@ -11,8 +11,10 @@ import { fieldConfigRouter } from "../domains/fieldConfigAdmin/route.js";
 import { inventoryRouter } from "../domains/inventory/route.js";
 import { machinesRouter } from "../domains/machines/route.js";
 import { mrpRouter } from "../domains/mrp/route.js";
+import { ordersRouter } from "../domains/orders/route.js";
 import { permissionsRouter } from "../domains/permissions/route.js";
 import { productsRouter } from "../domains/products/route.js";
+import { purchaseOrdersRouter } from "../domains/purchaseOrders/route.js";
 import { quotationsRouter } from "../domains/quotations/route.js";
 import { rawMaterialsRouter } from "../domains/rawMaterials/route.js";
 import { supplierMaterialsRouter } from "../domains/supplierMaterials/route.js";
@@ -57,6 +59,10 @@ export function createApp(): Express {
   // Pass 2c: deals + quotations.
   app.use(dealsRouter);
   app.use(quotationsRouter);
+
+  // Pass 2d: orders + purchase orders.
+  app.use(ordersRouter);
+  app.use(purchaseOrdersRouter);
 
   // Must be registered last -- Express only treats a 4-arg function as
   // an error handler.
