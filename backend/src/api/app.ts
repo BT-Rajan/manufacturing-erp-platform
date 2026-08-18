@@ -4,8 +4,10 @@ import express, { type Express } from "express";
 import { errorHandler } from "../core/errors/index.js";
 import { getSettings } from "../core/config/settings.js";
 import { bomRouter } from "../domains/bom/route.js";
+import { calendarRouter } from "../domains/calendar/route.js";
 import { customersRouter } from "../domains/customers/route.js";
 import { dealsRouter } from "../domains/deals/route.js";
+import { deliveryNotesRouter } from "../domains/deliveryNotes/route.js";
 import { feasibilityRouter } from "../domains/feasibility/route.js";
 import { fieldConfigRouter } from "../domains/fieldConfigAdmin/route.js";
 import { inventoryRouter } from "../domains/inventory/route.js";
@@ -13,6 +15,7 @@ import { machinesRouter } from "../domains/machines/route.js";
 import { mrpRouter } from "../domains/mrp/route.js";
 import { ordersRouter } from "../domains/orders/route.js";
 import { permissionsRouter } from "../domains/permissions/route.js";
+import { productionRouter } from "../domains/production/route.js";
 import { productsRouter } from "../domains/products/route.js";
 import { purchaseOrdersRouter } from "../domains/purchaseOrders/route.js";
 import { quotationsRouter } from "../domains/quotations/route.js";
@@ -63,6 +66,11 @@ export function createApp(): Express {
   // Pass 2d: orders + purchase orders.
   app.use(ordersRouter);
   app.use(purchaseOrdersRouter);
+
+  // Pass 2e: production schedules + delivery notes + calendar.
+  app.use(productionRouter);
+  app.use(deliveryNotesRouter);
+  app.use(calendarRouter);
 
   // Must be registered last -- Express only treats a 4-arg function as
   // an error handler.

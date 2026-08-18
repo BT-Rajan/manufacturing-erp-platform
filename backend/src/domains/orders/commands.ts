@@ -1,12 +1,21 @@
 import { record } from "../../application/services/auditService.js";
+import * as capacityService from "../../application/services/capacityService.js";
 import { nextNumber } from "../../application/services/numberSeriesService.js";
 import { computeDocumentTotals, priceLine } from "../../application/services/pricingService.js";
-import { getDefaultTaxRate, getLargeDiscountApprovalThreshold } from "../../application/services/settingsService.js";
+import {
+  getDefaultTaxRate,
+  getLargeDiscountApprovalThreshold,
+  isAutoCreateDeliveryNoteEnabled,
+  isAutoScheduleProductionEnabled,
+} from "../../application/services/settingsService.js";
 import { ConflictError, NotFoundAppError, ValidationAppError } from "../../core/errors/index.js";
 import { assertReasonGiven, assertTransitionAllowed } from "../../core/workflow/index.js";
+import { getDb } from "../../infrastructure/database/connection.js";
 import * as customersRepository from "../customers/repository.js";
 import * as dealService from "../deals/service.js";
 import * as inventoryCommands from "../inventory/commands.js";
+import * as inventoryQueries from "../inventory/queries.js";
+import * as machinesRepository from "../machines/repository.js";
 import * as productsRepository from "../products/repository.js";
 import * as quotationsRepository from "../quotations/repository.js";
 import { ALLOWED_TRANSITIONS, RESERVED_STATUSES, STATUSES_REQUIRING_CLOSE_REASON, type OrderStatus } from "./constants.js";
@@ -188,17 +197,189 @@ export async function changeStatus(
   );
   await record({ entityType: TABLE_NAME, entityId: id, action: "update", performedBy, changes: { status: [oldStatus, newStatus] } });
 
-  // _maybe_auto_schedule_production (on 'confirmed'),
-  // _maybe_auto_create_delivery_note (on 'ready_to_ship'), and
-  // _cancel_active_production_batches (on 'cancelled') all need
-  // production_service/delivery_note_service, which don't exist until
-  // Pass 2e -- wired there, matching the feasibility -> quotation
-  // deferral pattern from Pass 2b -> 2c. See docs/PARITY_CHECKLIST.md.
-  if (newStatus === "cancelled") {
+  if (newStatus === "confirmed") {
+    await maybeAutoScheduleProduction(id, performedBy);
+  } else if (newStatus === "ready_to_ship") {
+    await maybeAutoCreateDeliveryNote(id, performedBy);
+  } else if (newStatus === "cancelled") {
+    await cancelActiveProductionBatches(id, order.order_number, reason ?? null, performedBy);
     await dealService.reconcileDealStatus(order.deal_id, performedBy);
   }
 
   return getOrder(id);
+}
+
+/** Fires when an order is cancelled: any production batch still tied
+ * to it that hasn't finished ('planned' or 'in_progress' -- 'completed'
+ * batches are deliberately left alone, since the materials are
+ * genuinely consumed and the units genuinely exist) is cancelled too,
+ * freeing the machine time and worker-hours it was holding for a
+ * request that no longer exists. The resource-freeing half of what the
+ * automation needs to stay honest: it auto-schedules real capacity on
+ * confirmation, so it has to auto-release that capacity on
+ * cancellation too. Dynamic import: production/commands.ts already
+ * imports this module (to advance a batch's order to 'in_production'
+ * when it starts), so a top-level import back here would be circular. */
+async function cancelActiveProductionBatches(
+  orderId: number,
+  orderNumber: string | null,
+  closeReason: string | null,
+  performedBy: number | null,
+): Promise<void> {
+  const db = getDb();
+  const activeBatches = await db
+    .selectFrom("production_schedules")
+    .select("id")
+    .where("order_id", "=", orderId)
+    .where("deleted_at", "is", null)
+    .where("status", "in", ["planned", "in_progress"])
+    .execute();
+  if (activeBatches.length === 0) return;
+
+  const reason = `Order ${orderNumber ?? `#${orderId}`} was cancelled` + (closeReason ? `: ${closeReason}` : ".");
+  const { changeStatus: changeBatchStatus } = await import("../production/commands.js");
+  for (const batch of activeBatches) {
+    try {
+      await changeBatchStatus(batch.id, "cancelled", null, reason, performedBy);
+    } catch (err) {
+      if (!(err instanceof ConflictError) && !(err instanceof ValidationAppError)) throw err;
+    }
+  }
+}
+
+/** Fires the moment an order is confirmed -- the same "auto create,
+ * with role-based flexibility" pattern as feasibility's auto-quotation
+ * hook, one joint further along: if enabled (Settings, admin/manager-
+ * only to change), schedules a production batch for each line whose
+ * product has a machine + time formula, using the same vacant-slot
+ * capacity scan the feasibility check itself uses. Nets off existing
+ * finished-goods stock first (same as feasibility's run_check) so a
+ * line already covered by stock doesn't get an unnecessary batch.
+ * Lines with no formula, no machine, or no achievable slot are left
+ * for Production to schedule by hand. Never throws. */
+async function maybeAutoScheduleProduction(orderId: number, performedBy: number | null): Promise<void> {
+  if (!(await isAutoScheduleProductionEnabled())) return;
+
+  const order = await getOrder(orderId);
+  const today = new Date().toISOString().slice(0, 10);
+
+  let anyBatchCreated = false;
+  let anyLineUnresolved = false;
+
+  for (const line of order.lines) {
+    const stock = await inventoryQueries.getStock("product", line.product_id);
+    const availableFromExistingStock = Math.max(stock.quantity_on_hand - (stock.quantity_reserved - Number(line.quantity)), 0);
+    const coveredByStock = Math.min(Number(line.quantity), availableFromExistingStock);
+    const quantityToProduce = Math.round((Number(line.quantity) - coveredByStock) * 10000) / 10000;
+    if (quantityToProduce <= 0) continue;
+
+    const product = await productsRepository.findById(line.product_id);
+    if (!product || product.machine_id === null || product.production_hours_per_unit === null) {
+      anyLineUnresolved = true;
+      continue;
+    }
+    const machine = await machinesRepository.findById(product.machine_id);
+    if (!machine) {
+      anyLineUnresolved = true;
+      continue;
+    }
+
+    const requiredHours = Math.round(quantityToProduce * Number(product.production_hours_per_unit) * 10000) / 10000;
+    const db = getDb();
+    const bookedBatches = await db
+      .selectFrom("production_schedules")
+      .innerJoin("products", "products.id", "production_schedules.product_id")
+      .select([
+        "production_schedules.scheduled_start",
+        "production_schedules.scheduled_end",
+        "production_schedules.planned_quantity",
+        "products.production_hours_per_unit as product_production_hours_per_unit",
+        "products.workers_required as product_workers_required",
+      ])
+      .where("production_schedules.machine_id", "=", machine.id)
+      .where("production_schedules.deleted_at", "is", null)
+      .where("production_schedules.status", "in", [...capacityService.BOOKED_PRODUCTION_STATUSES])
+      .where("production_schedules.scheduled_end", ">=", new Date(`${today}T00:00:00.000Z`))
+      .execute();
+    const dailyBooked = capacityService.dailyBookedHours(
+      bookedBatches.map((b) => ({
+        scheduled_start: b.scheduled_start.toISOString().slice(0, 10),
+        scheduled_end: b.scheduled_end.toISOString().slice(0, 10),
+        planned_quantity: Number(b.planned_quantity),
+        product_production_hours_per_unit: b.product_production_hours_per_unit ? Number(b.product_production_hours_per_unit) : null,
+        product_workers_required: b.product_workers_required,
+      })),
+      "machine",
+    );
+    const completion = capacityService.findVacantSlotCompletion(Number(machine.capacity_hours_per_day), dailyBooked, requiredHours, today);
+    if (completion === null) {
+      anyLineUnresolved = true;
+      continue;
+    }
+
+    try {
+      const { createBatch } = await import("../production/commands.js");
+      await createBatch(
+        {
+          product_id: line.product_id,
+          machine_id: machine.id,
+          order_id: orderId,
+          planned_quantity: quantityToProduce,
+          scheduled_start: today,
+          scheduled_end: completion,
+        },
+        performedBy,
+        {
+          autoScheduled: true,
+          notes:
+            `Auto-scheduled on confirmation of ${order.order_number}` +
+            (coveredByStock > 0 ? ` (${coveredByStock} of ${Number(line.quantity)} already covered by existing stock).` : "."),
+        },
+      );
+      anyBatchCreated = true;
+    } catch (err) {
+      if (!(err instanceof ConflictError) && !(err instanceof ValidationAppError)) throw err;
+      anyLineUnresolved = true;
+    }
+  }
+
+  if (order.lines.length > 0 && !anyBatchCreated && !anyLineUnresolved) {
+    // Every line was fully covered by existing finished-goods stock --
+    // nothing left to produce, so nothing will ever drive the usual
+    // confirmed -> in_production -> ready_to_ship progression. Skip
+    // straight to ready_to_ship instead of leaving the order stranded.
+    try {
+      await changeStatus(orderId, "ready_to_ship", null, performedBy);
+    } catch (err) {
+      if (!(err instanceof ConflictError) && !(err instanceof ValidationAppError)) throw err;
+    }
+  }
+}
+
+/** Fires the moment an order becomes ready to ship -- whether set
+ * directly or auto-advanced by production once every batch completed.
+ * The last joint in the pipeline, same pattern as the two upstream
+ * hooks: if enabled, drafts a delivery note automatically (today's
+ * date, lines mirrored from the order). Never throws. Dynamic import:
+ * deliveryNotes/commands.ts already imports this module (to move an
+ * order to 'shipped' when its note is issued), so a top-level import
+ * back here would be circular. */
+async function maybeAutoCreateDeliveryNote(orderId: number, performedBy: number | null): Promise<void> {
+  if (!(await isAutoCreateDeliveryNoteEnabled())) return;
+  try {
+    const { createDeliveryNote } = await import("../deliveryNotes/commands.js");
+    await createDeliveryNote(
+      {
+        order_id: orderId,
+        delivery_date: new Date().toISOString().slice(0, 10),
+        notes: "Auto-created when the order became ready to ship.",
+      },
+      performedBy,
+      true,
+    );
+  } catch (err) {
+    if (!(err instanceof ConflictError) && !(err instanceof ValidationAppError)) throw err;
+  }
 }
 
 export async function approveOrder(id: number, performedBy: number | null) {

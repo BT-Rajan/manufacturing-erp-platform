@@ -26,6 +26,18 @@ export async function isAutoCreateQuotationEnabled(): Promise<boolean> {
   return raw === "true" || raw === "1" || raw === "yes";
 }
 
+export async function isAutoScheduleProductionEnabled(): Promise<boolean> {
+  const values = await getAll();
+  const raw = (values["auto_schedule_production_on_confirm"] ?? "true").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
+export async function isAutoCreateDeliveryNoteEnabled(): Promise<boolean> {
+  const values = await getAll();
+  const raw = (values["auto_create_delivery_note_on_ready"] ?? "true").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
 export async function getLargePoApprovalThreshold(): Promise<number | null> {
   const values = await getAll();
   const raw = (values["large_po_approval_threshold"] ?? "").trim();

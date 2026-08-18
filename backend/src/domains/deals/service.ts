@@ -66,6 +66,19 @@ export async function getOrCreateForNewStage(
   return { id, furthest_stage: stage, status: "open" };
 }
 
+/** Bumps furthest_stage on an existing deal without creating anything
+ * -- used when a later stage (production, delivery) attaches to a
+ * deal that already exists rather than originating one. */
+export async function advanceStage(dealId: number | null, stage: DealStage, performedBy: number | null): Promise<void> {
+  if (dealId === null) return;
+  const deal = await getDeal(dealId);
+  if (!deal) return;
+  if (STAGE_ORDER[stage] > STAGE_ORDER[deal.furthest_stage]) {
+    const db = getDb();
+    await db.updateTable("deals").set({ furthest_stage: stage, updated_by: performedBy }).where("id", "=", dealId).execute();
+  }
+}
+
 /** Explicitly reopens a deal (e.g. feasibility revive calling this
  * when the check it's reviving belongs to a deal marked cancelled). */
 export async function reopenDeal(dealId: number | null, performedBy: number | null): Promise<void> {

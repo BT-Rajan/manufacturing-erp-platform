@@ -286,8 +286,8 @@ export interface PurchaseOrderLinesTable {
   received_quantity: ColumnType<string, string | number | undefined, string | number>;
 }
 
-/** Minimal stub -- see migration 0004's header comment. Full domain
- * lands in Pass 2e. */
+/** Widened from the Pass 2b stub to the full domain (see migration
+ * 0007's header). */
 export interface ProductionSchedulesTable {
   id: Generated<number>;
   batch_number: string | null;
@@ -295,11 +295,62 @@ export interface ProductionSchedulesTable {
   machine_id: number | null;
   order_id: number | null;
   planned_quantity: ColumnType<string, string | number | undefined, string | number>;
+  produced_quantity: ColumnType<string, string | number | undefined, string | number>;
   scheduled_start: ColumnType<Date, string, string>;
   scheduled_end: ColumnType<Date, string, string>;
+  actual_start: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  actual_end: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
   status: "planned" | "in_progress" | "completed" | "cancelled";
+  auto_scheduled: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  cancel_reason: string | null;
+  notes: string | null;
   deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
   created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface DeliveryNotesTable {
+  id: Generated<number>;
+  delivery_note_number: string;
+  order_id: number;
+  delivery_date: ColumnType<Date, string, string>;
+  status: "draft" | "issued" | "cancelled";
+  auto_created: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  cancel_reason: string | null;
+  notes: string | null;
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface DeliveryNoteLinesTable {
+  id: Generated<number>;
+  delivery_note_id: number;
+  product_id: number;
+  quantity_delivered: ColumnType<string, string | number | undefined, string | number>;
+}
+
+export interface CalendarEventsTable {
+  id: Generated<number>;
+  event_date: ColumnType<Date, string, string>;
+  title: string;
+  notes: string | null;
+  all_users: ColumnType<boolean, boolean | number | undefined, boolean | number>;
+  deleted_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
+  created_at: ColumnType<Date, Date | string | undefined, never>;
+  created_by: number | null;
+  updated_at: ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+  updated_by: number | null;
+}
+
+export interface CalendarEventMentionsTable {
+  id: Generated<number>;
+  event_id: number;
+  user_id: number;
 }
 
 export interface FeasibilityChecksTable {
@@ -417,4 +468,8 @@ export interface Database {
   quotation_details: QuotationDetailsTable;
   purchase_orders: PurchaseOrdersTable;
   purchase_order_lines: PurchaseOrderLinesTable;
+  delivery_notes: DeliveryNotesTable;
+  delivery_note_lines: DeliveryNoteLinesTable;
+  calendar_events: CalendarEventsTable;
+  calendar_event_mentions: CalendarEventMentionsTable;
 }

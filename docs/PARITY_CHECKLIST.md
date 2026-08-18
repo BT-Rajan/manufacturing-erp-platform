@@ -65,9 +65,22 @@ or assumption — as of the migration start date.
       large-PO and large-discount approval gates, auto-draft from MRP
       shortages (real greedy allocation, grouped by supplier, skips
       materials already covered by a pending PO)
-- [ ] Delivery notes: creation, PDF generation, signature capture
-- [ ] Production schedules: scheduling, capacity service, completion
-- [ ] Calendar: calendar events tied to schedules/deliveries
+- [x] Delivery notes: creation (auto-populated from order lines or
+      explicit), eligibility (order must be ready_to_ship, one active
+      note per order), issuing ships the linked order. PDF generation
+      and signature capture deferred to Pass 3 (adapter infrastructure)
+- [x] Production schedules: scheduling (manual + real auto-schedule on
+      order confirmation via the same vacant-slot capacity scan
+      feasibility uses), completion (all-or-nothing material
+      consumption + finished-goods production), cancellation cascades
+      from order cancellation
+- [x] Calendar: events with date/title/notes, all-users or per-user
+      mentions, creator-only (or admin/manager) modify -- not tied to
+      the department permission matrix, matching jdk_clean. Not
+      auto-linked to schedule/delivery events (jdk_clean's calendar is
+      a general-purpose scheduling tool, not auto-populated from other
+      domains, so there was nothing to port there beyond the base
+      CRUD)
 - [ ] Dashboard: widgets, user-customizable dashboard preferences
 - [ ] Notifications: in-app notifications, notification service
 - [ ] Email: transactional email via SMTP (order confirms, etc.)
